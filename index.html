@@ -1,1 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharmacy Claims Editor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #d0d5e0; min-height: 100vh; display: flex; }
 
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 240px; min-height: 100vh; background: #1a2744; color: #fff;
+  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+  box-shadow: 3px 0 16px rgba(0,0,0,.25);
+}
+.sb-logo { padding: 22px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.sb-logo h1 { font-size: 15px; color: #e8c97a; font-weight: 700; line-height: 1.3; }
+.sb-logo p  { font-size: 10px; color: rgba(255,255,255,.4); margin-top: 3px; text-transform: uppercase; letter-spacing: .8px; }
+.sb-sec-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,.3); padding: 14px 18px 6px; }
+.contract-list { list-style: none; }
+.contract-item { display: flex; align-items: center; margin: 1px 8px; border-radius: 7px; cursor: pointer; transition: background .15s; }
+.contract-item:hover { background: rgba(255,255,255,.07); }
+.contract-item.active { background: rgba(232,201,122,.18); }
+.ci-btn { flex: 1; background: none; border: none; color: rgba(255,255,255,.75); font-size: 12.5px; text-align: left; padding: 9px 10px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: Arial, sans-serif; }
+.contract-item.active .ci-btn { color: #e8c97a; font-weight: 700; }
+.ci-del { background: none; border: none; color: rgba(255,255,255,.2); cursor: pointer; padding: 7px 9px; font-size: 13px; border-radius: 5px; transition: all .15s; }
+.ci-del:hover { color: #ff8080; background: rgba(255,80,80,.15); }
+.btn-new { margin: 10px 10px 0; display: flex; align-items: center; gap: 6px; background: rgba(232,201,122,.15); border: 1px solid rgba(232,201,122,.35); color: #e8c97a; font-size: 12px; font-weight: 700; padding: 9px 12px; border-radius: 7px; cursor: pointer; transition: all .15s; width: calc(100% - 20px); font-family: Arial, sans-serif; }
+.btn-new:hover { background: rgba(232,201,122,.28); }
+.sb-footer { margin-top: auto; padding: 14px 10px; border-top: 1px solid rgba(255,255,255,.1); }
+.btn-export { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; background: #2563c7; color: #fff; border: none; border-radius: 7px; padding: 11px 14px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: Arial, sans-serif; }
+.btn-export:hover { background: #1d4fa0; transform: translateY(-1px); }
+
+/* ── MAIN ── */
+.main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; }
+.topbar { background: #fff; border-bottom: 1px solid #ccc; padding: 12px 32px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.topbar input { font-size: 20px; font-weight: 700; color: #1a3a7a; border: none; outline: none; background: transparent; flex: 1; border-bottom: 2px solid transparent; padding-bottom: 2px; font-family: Arial, sans-serif; }
+.topbar input:focus { border-bottom-color: #2563c7; }
+
+/* ── DOC PAGE ── */
+.doc-page { background: #fff; max-width: 920px; margin: 28px auto; padding: 36px 40px; box-shadow: 0 4px 24px rgba(0,0,0,.12); border-radius: 4px; }
+
+/* ── TITLE ── */
+.doc-title-input { font-size: 17px; font-weight: 700; color: #1a3a7a; text-align: center; border: none; border-bottom: 2px dashed #adc4f0; outline: none; background: transparent; width: 100%; font-family: Arial, sans-serif; padding: 2px 4px; display: block; }
+.doc-title-input:focus { border-bottom-color: #2563c7; background: #f0f6ff; border-radius: 4px 4px 0 0; }
+.title-rule { border: none; border-bottom: 2px solid #1a3a7a; margin: 8px 0 18px; }
+
+/* ── CRITICAL BOX ── */
+.critical-box { border: 1.5px solid #e07020; background: #fff8f0; border-radius: 4px; padding: 12px 16px; margin-bottom: 22px; }
+.critical-header { color: #c05010; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+.bullet-list { list-style: none; }
+.bullet-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 5px; font-size: 12.5px; color: #333; }
+.bd-orange { color: #c05010; margin-top: 1px; flex-shrink: 0; }
+.bd-green  { color: #2d7a50; margin-top: 1px; flex-shrink: 0; }
+.editable { outline: none; border-radius: 3px; padding: 1px 3px; display: inline; min-width: 10px; }
+.editable:hover { background: rgba(37,99,199,.08); }
+.editable:focus { background: #e8f0fe; outline: 1px solid #2563c7; border-radius: 3px; }
+.editable[contenteditable="true"]:empty::before { content: attr(data-ph); color: #bbb; font-style: italic; }
+.bullet-x { background: none; border: none; color: #ccc; cursor: pointer; font-size: 13px; padding: 0 2px; transition: color .15s; flex-shrink: 0; line-height: 1.4; }
+.bullet-x:hover { color: #c00; }
+.add-item-btn { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; background: none; border: 1px dashed #ccc; color: #999; font-size: 12px; padding: 5px; border-radius: 5px; cursor: pointer; margin-top: 8px; transition: all .15s; font-family: Arial, sans-serif; }
+.add-item-btn:hover       { border-color: #e07020; color: #e07020; }
+.add-item-btn.green:hover { border-color: #2d7a50; color: #2d7a50; }
+.add-item-btn.teal:hover  { border-color: #1a7a6a; color: #1a7a6a; }
+
+/* ── TWO COL ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 22px; }
+.info-col-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #1a3a7a; border-bottom: 1.5px solid #1a3a7a; padding-bottom: 5px; margin-bottom: 12px; }
+.info-label      { font-size: 12px; font-weight: 700; color: #222; margin: 10px 0 2px; }
+.info-val        { font-size: 12px; color: #333; line-height: 1.5; }
+.info-val-red    { font-size: 12px; color: #c00; line-height: 1.5; margin-top: 4px; }
+.info-val-italic { font-size: 12px; color: #555; font-style: italic; line-height: 1.5; margin-top: 2px; }
+
+/* ── SECTION HEADING ── */
+.sec-heading { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 10px; }
+.sec-heading-left      { font-size: 15px; font-weight: 700; color: #1a3a7a; }
+.sec-heading-left.teal { color: #1a6a5a; }
+
+/* ── HINT BAR ── */
+.hint-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; border-radius: 5px; padding: 7px 14px; margin-bottom: 10px; font-size: 11px; }
+.hint-bar.blue { background: #eef4fb; border: 1px solid #b8c8ee; color: #1a3a7a; }
+.hint-bar.red  { background: #fdf0f0; border: 1px solid #ddb8b8; color: #7a1a1a; }
+.hint-bar.teal { background: #edfaf6; border: 1px solid #a0d8cc; color: #1a5a4a; }
+.hint-bar span { display: flex; align-items: center; gap: 5px; }
+.hint-bar strong { font-weight: 700; }
+
+/* ── COL EDITOR ── */
+.col-editor { background: #eef2fb; border: 1.5px solid #b8c8ee; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }
+.col-editor.red  { background: #fdf0f0; border-color: #ddb8b8; }
+.col-editor.teal { background: #edfaf6; border-color: #a0d8cc; }
+.col-editor-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #1a3a7a; margin-bottom: 9px; }
+.col-editor.red  .col-editor-title { color: #7a1a1a; }
+.col-editor.teal .col-editor-title { color: #1a5a4a; }
+.col-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
+.col-tag { display: flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #b8c8ee; border-radius: 14px; padding: 3px 10px 3px 12px; font-size: 11.5px; color: #1a3a7a; font-weight: 600; }
+.col-editor.red  .col-tag { border-color: #ddb8b8; color: #7a1a1a; }
+.col-editor.teal .col-tag { border-color: #a0d8cc; color: #1a5a4a; }
+.col-tag-x { background: none; border: none; color: #aaa; cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
+.col-tag-x:hover { color: #c00; }
+.col-add-row { display: flex; gap: 6px; }
+.col-add-row input { flex: 1; border: 1px solid #b8c8ee; border-radius: 5px; padding: 5px 9px; font-size: 12px; outline: none; font-family: Arial, sans-serif; }
+.col-editor.red  .col-add-row input { border-color: #ddb8b8; }
+.col-editor.teal .col-add-row input { border-color: #a0d8cc; }
+.col-add-row input:focus { border-color: #2563c7; }
+.btn-col-add           { background: #1a3a7a; color: #fff; border: none; border-radius: 5px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif; white-space: nowrap; }
+.btn-col-add:hover     { background: #2563c7; }
+.btn-col-add.red       { background: #7a1a1a; }
+.btn-col-add.red:hover { background: #a02020; }
+.btn-col-add.teal       { background: #1a5a4a; }
+.btn-col-add.teal:hover { background: #1a7a6a; }
+
+/* ── ADD ROW BTN ── */
+.btn-add-row           { background: #1a3a7a; color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif; transition: background .15s; }
+.btn-add-row:hover     { background: #2563c7; }
+.btn-add-row.red       { background: #7a1a1a; }
+.btn-add-row.red:hover { background: #a02020; }
+.btn-add-row.teal       { background: #1a5a4a; }
+.btn-add-row.teal:hover { background: #1a7a6a; }
+
+/* ── REMINDERS BOX ── */
+.reminders-box { border: 1.5px solid #5aaa80; background: #f0faf5; border-radius: 4px; padding: 12px 16px; margin-top: 22px; }
+.reminders-header { color: #2d7a50; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+
+/* ── SME / VERSION EXTRA SECTIONS ── */
+.extra-section { border: 1.5px solid #b8c8ee; background: #f7f9ff; border-radius: 4px; padding: 14px 16px; margin-top: 18px; }
+.extra-section-title { font-size: 13px; font-weight: 700; color: #1a3a7a; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; border-bottom: 1.5px solid #d0daee; padding-bottom: 6px; }
+.extra-section-body { font-size: 12.5px; color: #333; line-height: 1.7; min-height: 48px; border-radius: 3px; padding: 4px 6px; display: block; white-space: pre-wrap; }
+.extra-section-body:hover { background: rgba(37,99,199,.05); }
+.extra-section-body:focus { background: #e8f0fe; outline: 1px solid #2563c7; border-radius: 3px; }
+
+/* ══════════════════════════════════════════════════════
+   RESIZABLE + DRAGGABLE COLUMN TABLE
+   Used by: med, nc, oa
+══════════════════════════════════════════════════════ */
+
+/* Scrollable wrapper */
+.resizable-table-wrap { overflow-x: auto; border: 1.5px solid #ccc; border-radius: 4px; margin-bottom: 6px; }
+.resizable-table-wrap.blue { border-color: #b8c8ee; }
+.resizable-table-wrap.red  { border-color: #ddb8b8; }
+.resizable-table-wrap.teal { border-color: #a0d8cc; }
+
+/* Table itself */
+.resizable-table { table-layout: fixed; border-collapse: collapse; font-size: 12px; min-width: 200px; }
+
+/* thead */
+.resizable-table thead tr { color: #fff; }
+.resizable-table thead th {
+  position: relative;
+  padding: 8px 20px 8px 8px;
+  text-align: left; font-size: 11.5px; font-weight: 700;
+  white-space: nowrap; overflow: hidden;
+  user-select: none;
+  cursor: grab;
+}
+.resizable-table thead th:active { cursor: grabbing; }
+.resizable-table thead th.th-actions { cursor: default; padding: 8px 4px; }
+
+/* column drag states */
+.resizable-table thead th.col-dragging  { opacity: .4; }
+.resizable-table thead th.col-drag-over {
+  outline: 3px solid #e8c97a !important;
+  outline-offset: -3px;
+}
+
+/* grip icon inside each draggable th */
+.col-th-grip {
+  display: inline-block; margin-right: 5px;
+  font-size: 10px; opacity: .6; vertical-align: middle;
+  cursor: grab;
+}
+
+/* resize handle — right edge of th */
+.col-resize-handle {
+  position: absolute; right: 0; top: 0;
+  width: 6px; height: 100%;
+  cursor: col-resize; z-index: 5;
+  background: transparent; transition: background .12s;
+}
+.col-resize-handle:hover,
+.col-resize-handle.is-resizing { background: rgba(255,255,255,.55); }
+
+/* global vertical indicator line during resize */
+.resize-indicator {
+  position: fixed; top: 0; bottom: 0; width: 2px;
+  background: #e8c97a; pointer-events: none; z-index: 9999;
+  display: none;
+}
+
+/* tbody */
+.resizable-table tbody tr:nth-child(odd)  { background: #fff; }
+.resizable-table tbody tr:nth-child(even) { background: #f4f6fb; }
+.resizable-table.red-rows  tbody tr:nth-child(even) { background: #fdf4f4; }
+.resizable-table.teal-rows tbody tr:nth-child(even) { background: #f0faf8; }
+.resizable-table tbody tr:hover { background: #e8f0fe; }
+.resizable-table.teal-rows tbody tr:hover { background: #d4f0e8; }
+
+/* oa row drag states */
+.resizable-table tbody tr.row-is-dragging { opacity: .38; }
+.resizable-table tbody tr.row-drag-over   { outline: 2px dashed #1a7a6a; outline-offset: -2px; background: #b8ede0 !important; }
+
+.resizable-table tbody td {
+  padding: 7px 12px; border-bottom: 1px solid #e0e4ee;
+  vertical-align: top; line-height: 1.5; overflow: hidden;
+}
+.resizable-table.red-rows  tbody td { border-bottom-color: #ead8d8; }
+.resizable-table.teal-rows tbody td { border-bottom-color: #c4dcd6; }
+.resizable-table tbody td.td-bold   { font-weight: 700; }
+.resizable-table tbody td.td-center { text-align: center; font-weight: 700; color: #c05010; }
+.resizable-table tbody td.td-actions { width: 36px; text-align: center; padding: 7px 4px; }
+.td-drag { width: 32px !important; text-align: center; padding: 7px 2px !important; }
+
+/* row grip icon (oa) */
+.drag-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 4px;
+  cursor: grab; color: #7ab8ac; font-size: 13px;
+  transition: all .15s; user-select: none;
+}
+.drag-grip:hover  { color: #1a5a4a; background: #b8ede0; }
+.drag-grip:active { cursor: grabbing; }
+
+.row-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: all .15s; }
+.row-del:hover { background: #fee2e2; color: #c00; }
+
+/* ── MODAL ── */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 8px; width: 420px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.25); overflow: hidden; }
+.modal-head      { background: #1a3a7a; color: #fff; padding: 16px 22px; font-size: 15px; font-weight: 700; }
+.modal-head.red  { background: #7a1a1a; }
+.modal-head.teal { background: #1a5a4a; }
+.modal-body { padding: 20px 22px; max-height: 60vh; overflow-y: auto; }
+.modal-body label { display: block; font-size: 12px; font-weight: 700; color: #1a3a7a; margin-bottom: 5px; }
+.modal-body label.red  { color: #7a1a1a; }
+.modal-body label.teal { color: #1a5a4a; }
+.modal-body input    { width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px 11px; font-size: 13px; font-family: Arial, sans-serif; outline: none; margin-bottom: 14px; }
+.modal-body input:focus { border-color: #2563c7; }
+.modal-body textarea { width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px 11px; font-size: 13px; font-family: Arial, sans-serif; outline: none; margin-bottom: 14px; resize: vertical; min-height: 56px; }
+.modal-body textarea:focus { border-color: #2563c7; }
+.modal-foot { padding: 14px 22px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 8px; }
+.btn-sm { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer; border: none; font-family: Arial, sans-serif; transition: all .15s; }
+.btn-primary            { background: #1a3a7a; color: #fff; }
+.btn-primary:hover      { background: #2563c7; }
+.btn-primary.red        { background: #7a1a1a; }
+.btn-primary.red:hover  { background: #a02020; }
+.btn-primary.teal       { background: #1a5a4a; }
+.btn-primary.teal:hover { background: #1a7a6a; }
+.btn-secondary          { background: #f0f2f8; color: #1a3a7a; border: 1px solid #b8c8ee; }
+.btn-secondary:hover    { background: #dde4f4; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 22px; right: 22px; background: #1a3a7a; color: #fff; padding: 11px 18px; border-radius: 7px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.2); transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999; border-left: 4px solid #e8c97a; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.err  { border-left-color: #c00; }
+</style>
+</head>
+<body>
+
+<div class="resize-indicator" id="resizeIndicator"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <h1>Pharmacy Claims</h1>
+    <p>Template Editor</p>
+  </div>
+  <div class="sb-sec-label">Contracts</div>
+  <ul class="contract-list" id="contractList"></ul>
+  <button class="btn-new" onclick="openNewModal()">&#xFF0B; New Contract</button>
+  <div class="sb-footer">
+    <button class="btn-export" onclick="exportDoc()">&#x2B07;&nbsp; Export to Word (.doc)</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <input type="text" id="topTitleInput" placeholder="Contract Name" oninput="onTopTitleInput(this.value)" />
+  </div>
+  <div id="docWrap"></div>
+</main>
+
+<!-- NEW CONTRACT MODAL -->
+<div class="modal-bg" id="newModal">
+  <div class="modal">
+    <div class="modal-head">New Contract</div>
+    <div class="modal-body">
+      <label>Contract Name</label>
+      <input type="text" id="newName" placeholder="e.g. CS for Pharmacy Claims 414"
+        onkeydown="if(event.key==='Enter')doCreate()" />
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-secondary" onclick="closeModal('newModal')">Cancel</button>
+      <button class="btn-sm btn-primary"   onclick="doCreate()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ROW MODAL — med -->
+<div class="modal-bg" id="medRowModal">
+  <div class="modal">
+    <div class="modal-head">Add Medicine Row</div>
+    <div class="modal-body" id="medRowModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-secondary" onclick="closeModal('medRowModal')">Cancel</button>
+      <button class="btn-sm btn-primary"   onclick="doAddStdRow('med')">Add Row</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ROW MODAL — nc -->
+<div class="modal-bg" id="ncRowModal">
+  <div class="modal">
+    <div class="modal-head red">Add Not Covered Row</div>
+    <div class="modal-body" id="ncRowModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-secondary"  onclick="closeModal('ncRowModal')">Cancel</button>
+      <button class="btn-sm btn-primary red" onclick="doAddStdRow('nc')">Add Row</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ROW MODAL — oa -->
+<div class="modal-bg" id="oaRowModal">
+  <div class="modal">
+    <div class="modal-head teal">Add Orthopedic Appliance Row</div>
+    <div class="modal-body" id="oaRowModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-secondary"    onclick="closeModal('oaRowModal')">Cancel</button>
+      <button class="btn-sm btn-primary teal" onclick="doAddOaRow()">Add Row</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let DB  = {};
+let AID = null;
+
+function C() { return DB[AID]; }
+
+const MED_DEFAULT_WIDTHS = [160, 100, 330];
+const NC_DEFAULT_WIDTHS  = [210, 430];
+const OA_DEFAULT_WIDTHS  = [180, 110, 320];
+
+function fresh(name) {
+  return {
+    id:   String(Date.now() + Math.random()),
+    name: name || 'Contract Name',
+    critical: [
+      'Critical point one — click to edit this text',
+      'Critical point two — click to edit this text',
+      'Critical point three — click to edit this text'
+    ],
+    rc: { deadline: 'XX months after expense date', validity: 'XX months for prescribed provision' },
+    pay: {
+      active: 'Payment method (active staff)', retired: 'Payment method (retired staff)',
+      regional: 'Regional note (optional)',    large:   'Large payment handling note'
+    },
+    med: {
+      cols: ['Type', 'Coverage', 'Key Details'],
+      colWidths: MED_DEFAULT_WIDTHS.slice(),
+      rows: [
+        { Type: 'Medicine Type A', Coverage: 'XX%', 'Key Details': 'Details and conditions for this coverage type.' },
+        { Type: 'Medicine Type B', Coverage: 'XX%', 'Key Details': 'Details and conditions for this coverage type.' },
+        { Type: 'Medicine Type C', Coverage: 'XX%', 'Key Details': 'Details and conditions for this coverage type.' }
+      ]
+    },
+    nc: {
+      cols: ['Item', 'Exceptions & Notes'],
+      colWidths: NC_DEFAULT_WIDTHS.slice(),
+      rows: [
+        { Item: 'Excluded item A', 'Exceptions & Notes': 'Not covered under any circumstances.' },
+        { Item: 'Excluded item B', 'Exceptions & Notes': 'Exception: If prescribed for a specific condition.' },
+        { Item: 'Excluded item C', 'Exceptions & Notes': 'Exception: Prior approval required.' }
+      ]
+    },
+    oa: {
+      cols: ['Type', 'Coverage', 'Key Details'],
+      colWidths: OA_DEFAULT_WIDTHS.slice(),
+      rows: [
+        { Type: 'Orthopedic Brace',   Coverage: 'XX%', 'Key Details': 'Prescribed by a licensed orthopedic specialist.' },
+        { Type: 'Prosthetic Limb',    Coverage: 'XX%', 'Key Details': 'Prior approval required. One per 5 years.' },
+        { Type: 'Orthopedic Insoles', Coverage: 'XX%', 'Key Details': 'Requires podiatrist prescription.' }
+      ]
+    },
+    reminders: [
+      'Reminder point one — click to edit',
+      'Reminder point two — click to edit',
+      'Reminder point three — click to edit'
+    ],
+    sme:  '',
+    ver2: ''
+  };
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+function init() {
+  try {
+    const raw = localStorage.getItem('pharm_v7');
+    if (raw) { const d = JSON.parse(raw); DB = d.DB || {}; AID = d.AID || null; }
+  } catch(e) { DB = {}; }
+
+  // migrate older saved contracts
+  Object.values(DB).forEach(c => {
+    if (!c.med.colWidths || c.med.colWidths.length !== c.med.cols.length)
+      c.med.colWidths = c.med.cols.map((_, i) => MED_DEFAULT_WIDTHS[i] || 160);
+    if (!c.nc.colWidths  || c.nc.colWidths.length  !== c.nc.cols.length)
+      c.nc.colWidths  = c.nc.cols.map((_, i)  => NC_DEFAULT_WIDTHS[i]  || 180);
+    if (!c.oa) c.oa = {
+      cols: ['Type','Coverage','Key Details'], colWidths: OA_DEFAULT_WIDTHS.slice(),
+      rows: [{ Type: 'Orthopedic Brace', Coverage: 'XX%', 'Key Details': 'Add details here.' }]
+    };
+    if (!c.oa.colWidths || c.oa.colWidths.length !== c.oa.cols.length)
+      c.oa.colWidths = c.oa.cols.map((_, i) => OA_DEFAULT_WIDTHS[i] || 160);
+    if (c.sme  === undefined) c.sme  = '';
+    if (c.ver2 === undefined) c.ver2 = '';
+  });
+
+  if (!Object.keys(DB).length) { const c = fresh(); DB[c.id] = c; AID = c.id; }
+  if (!AID || !DB[AID]) AID = Object.keys(DB)[0];
+  renderAll();
+}
+
+function save() {
+  try { localStorage.setItem('pharm_v7', JSON.stringify({ DB, AID })); } catch(e) {}
+}
+
+function renderAll() { renderSidebar(); renderDoc(); }
+
+// ─────────────────────────────────────────────
+//  SIDEBAR
+// ─────────────────────────────────────────────
+function renderSidebar() {
+  document.getElementById('contractList').innerHTML =
+    Object.values(DB).map(c => `
+      <li class="contract-item ${c.id === AID ? 'active' : ''}">
+        <button class="ci-btn" onclick="switchTo('${c.id}')">${x(c.name)}</button>
+        <button class="ci-del" onclick="delContract('${c.id}')">&#x2715;</button>
+      </li>`).join('');
+}
+
+function switchTo(id) { AID = id; save(); renderAll(); }
+
+function delContract(id) {
+  if (Object.keys(DB).length === 1) { toast('Cannot delete last contract.', true); return; }
+  if (!confirm('Delete this contract?')) return;
+  delete DB[id];
+  if (AID === id) AID = Object.keys(DB)[0];
+  save(); renderAll();
+}
+
+function openNewModal() {
+  document.getElementById('newName').value = '';
+  openModal('newModal');
+  setTimeout(() => document.getElementById('newName').focus(), 80);
+}
+
+function doCreate() {
+  const name = document.getElementById('newName').value.trim() || 'New Contract';
+  const c = fresh(name);
+  DB[c.id] = c; AID = c.id;
+  closeModal('newModal'); save(); renderAll();
+  toast('Contract created.');
+}
+
+// ─────────────────────────────────────────────
+//  DOCUMENT RENDER
+// ─────────────────────────────────────────────
+function renderDoc() {
+  const c = C(); if (!c) return;
+  document.getElementById('topTitleInput').value = c.name;
+
+  document.getElementById('docWrap').innerHTML = `
+<div style="padding:0 28px 40px">
+<div class="doc-page">
+
+  <input class="doc-title-input" type="text" value="${x(c.name)}"
+    oninput="onDocTitleInput(this.value)" placeholder="Contract Title" />
+  <hr class="title-rule">
+
+  <!-- CRITICAL INFO -->
+  <div class="critical-box">
+    <div class="critical-header">&#x26A0; CRITICAL INFORMATION &#x26A0;</div>
+    <ul class="bullet-list">${c.critical.map((t,i)=>bRow(t,i,'crit','orange')).join('')}</ul>
+    <button class="add-item-btn" onclick="addBullet('crit')">&#xFF0B; Add item</button>
+  </div>
+
+  <!-- R&C + PAYMENT -->
+  <div class="two-col">
+    <div>
+      <div class="info-col-title">&#x1F4CB; R&amp;C &ndash; APPLICABLE</div>
+      <div class="info-label">Claim Submission Deadline</div>
+      <div class="info-val">All claims must be received within
+        <span class="editable" contenteditable="true" data-f="rc.deadline" data-ph="duration">${x(c.rc.deadline)}</span>
+      </div>
+      <div class="info-label">Prescription Validity</div>
+      <div class="info-val">
+        <span class="editable" contenteditable="true" data-f="rc.validity" data-ph="validity period">${x(c.rc.validity)}</span>
+      </div>
+    </div>
+    <div>
+      <div class="info-col-title">&#x1F4B3; PAYMENT METHODS</div>
+      <div class="info-label">Active Staff</div>
+      <div class="info-val"><span class="editable" contenteditable="true" data-f="pay.active" data-ph="method">${x(c.pay.active)}</span></div>
+      <div class="info-label">Retired Staff</div>
+      <div class="info-val"><span class="editable" contenteditable="true" data-f="pay.retired" data-ph="method">${x(c.pay.retired)}</span></div>
+      <div class="info-val-red">&#x1F310; <span class="editable" contenteditable="true" data-f="pay.regional" data-ph="regional note">${x(c.pay.regional)}</span></div>
+      <div class="info-val-italic">&#x1F4B0; <span class="editable" contenteditable="true" data-f="pay.large" data-ph="large payment note">${x(c.pay.large)}</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ MEDICINES ═══ -->
+  <div class="sec-heading">
+    <div class="sec-heading-left">&#x1F48A; MEDICINES COVERAGE (80%)</div>
+    <button class="btn-add-row" onclick="openStdRowModal('med')">&#xFF0B; Add Row</button>
+  </div>
+  <div class="hint-bar blue">
+    <span>&#x2194; <strong>Resize columns:</strong> drag the right edge of any header</span>
+    <span>&#x2630; <strong>Reorder columns:</strong> drag the &#x2630; grip in the header left or right</span>
+  </div>
+  <div class="col-editor">
+    <div class="col-editor-title">&#x2699; Table Columns &mdash; add or remove columns</div>
+    <div class="col-tags">${c.med.cols.map((col,i)=>cTag(col,i,'med')).join('')}</div>
+    <div class="col-add-row">
+      <input type="text" id="med_ci" placeholder="New column name&hellip;"
+        onkeydown="if(event.key==='Enter')addCol('med','med_ci')" />
+      <button class="btn-col-add" onclick="addCol('med','med_ci')">Add Column</button>
+    </div>
+  </div>
+  ${buildStdTable('med','medTable','#1a3a7a','blue','')}
+
+  <!-- ═══ NOT COVERED ═══ -->
+  <div class="sec-heading" style="margin-top:28px">
+    <div class="sec-heading-left">&#x1F6AB; NOT COVERED ITEMS</div>
+    <button class="btn-add-row red" onclick="openStdRowModal('nc')">&#xFF0B; Add Row</button>
+  </div>
+  <div class="hint-bar red">
+    <span>&#x2194; <strong>Resize columns:</strong> drag the right edge of any header</span>
+    <span>&#x2630; <strong>Reorder columns:</strong> drag the &#x2630; grip in the header left or right</span>
+  </div>
+  <div class="col-editor red">
+    <div class="col-editor-title">&#x2699; Table Columns &mdash; add or remove columns</div>
+    <div class="col-tags">${c.nc.cols.map((col,i)=>cTag(col,i,'nc')).join('')}</div>
+    <div class="col-add-row">
+      <input type="text" id="nc_ci" placeholder="New column name&hellip;"
+        onkeydown="if(event.key==='Enter')addCol('nc','nc_ci')" />
+      <button class="btn-col-add red" onclick="addCol('nc','nc_ci')">Add Column</button>
+    </div>
+  </div>
+  ${buildStdTable('nc','ncTable','#7a1a1a','red','red-rows')}
+
+  <!-- ═══ ORTHOPEDIC APPLIANCE ═══ -->
+  <div class="sec-heading" style="margin-top:30px">
+    <div class="sec-heading-left teal">&#x1F9B4; ORTHOPEDIC APPLIANCE COVERAGE</div>
+    <button class="btn-add-row teal" onclick="openOaRowModal()">&#xFF0B; Add Row</button>
+  </div>
+  <div class="hint-bar teal">
+    <span>&#x2194; <strong>Resize columns:</strong> drag the right edge of any header</span>
+    <span>&#x2630; <strong>Reorder columns:</strong> drag the &#x2630; grip in the header left or right</span>
+  </div>
+  <div class="col-editor teal">
+    <div class="col-editor-title">&#x2699; Table Columns &mdash; add or remove columns</div>
+    <div class="col-tags">${c.oa.cols.map((col,i)=>cTagTeal(col,i)).join('')}</div>
+    <div class="col-add-row">
+      <input type="text" id="oa_ci" placeholder="New column name&hellip;"
+        onkeydown="if(event.key==='Enter')addOaCol()" />
+      <button class="btn-col-add teal" onclick="addOaCol()">Add Column</button>
+    </div>
+  </div>
+  ${buildOaTable(c)}
+
+  <!-- REMINDERS -->
+  <div class="reminders-box">
+    <div class="reminders-header">&#x2705; IMPORTANT REMINDERS &#x2705;</div>
+    <ul class="bullet-list">${c.reminders.map((t,i)=>bRow(t,i,'rem','green')).join('')}</ul>
+    <button class="add-item-btn green" onclick="addBullet('rem')">&#xFF0B; Add reminder</button>
+  </div>
+
+  <!-- SME -->
+  <div class="extra-section">
+    <div class="extra-section-title">SME</div>
+    <div class="extra-section-body editable" contenteditable="true"
+      data-f="sme" data-ph="Write SME notes here…">${x(c.sme||'')}</div>
+  </div>
+
+  <!-- VERSION 2 -->
+  <div class="extra-section">
+    <div class="extra-section-title">VERSION 2</div>
+    <div class="extra-section-body editable" contenteditable="true"
+      data-f="ver2" data-ph="Write Version 2 notes here…">${x(c.ver2||'')}</div>
+  </div>
+
+</div>
+</div>`;
+
+  attachEditable();
+  attachStdTableInteractions('med', 'medTable');
+  attachStdTableInteractions('nc',  'ncTable');
+  attachOaInteractions();
+}
+
+// ─────────────────────────────────────────────
+//  STD TABLE BUILDER  (med / nc)
+// ─────────────────────────────────────────────
+function buildStdTable(tkey, tableId, headBg, wrapClass, tableClass) {
+  const tbl = C()[tkey];
+  while (tbl.colWidths.length < tbl.cols.length) tbl.colWidths.push(160);
+  tbl.colWidths.length = tbl.cols.length;
+
+  const totalW = tbl.colWidths.reduce((a, b) => a + b, 0) + 36;
+
+  const ths = tbl.cols.map((col, i) => `
+    <th style="width:${tbl.colWidths[i]}px;" data-tkey="${tkey}" data-ci="${i}" draggable="true">
+      <span class="col-th-grip" title="Drag to reorder this column">&#x2630;</span>${x(col)}<div class="col-resize-handle" data-ci="${i}"></div>
+    </th>`).join('');
+
+  const trs = tbl.rows.map((row, ri) => `
+    <tr>
+      ${tbl.cols.map((col, ci) => `
+        <td class="${ci===0?'td-bold':''} ${col==='Coverage'?'td-center':''}">
+          <span class="editable" contenteditable="true"
+            data-f="${tkey}.rows.${ri}.${ek(col)}" data-ph="&mdash;">${x(row[col]||'')}</span>
+        </td>`).join('')}
+      <td class="td-actions"><button class="row-del" onclick="delRow('${tkey}',${ri})">&#x1F5D1;</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="resizable-table-wrap ${wrapClass}">
+    <table class="resizable-table ${tableClass}" id="${tableId}" style="width:${totalW}px;">
+      <thead><tr style="background:${headBg};">${ths}<th class="th-actions" style="width:36px;"></th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────
+//  STD TABLE INTERACTIONS  — col resize + col drag-reorder
+// ─────────────────────────────────────────────
+function attachStdTableInteractions(tkey, tableId) {
+  attachStdColResize(tkey, tableId);
+  attachStdColDrag(tkey, tableId);
+}
+
+/* ─ Column Resize ─ */
+function attachStdColResize(tkey, tableId) {
+  const table     = document.getElementById(tableId);
+  const indicator = document.getElementById('resizeIndicator');
+  if (!table) return;
+
+  table.querySelectorAll('thead .col-resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const th     = handle.closest('th');
+      const startX = e.clientX;
+      const startW = th.getBoundingClientRect().width;
+
+      handle.classList.add('is-resizing');
+      indicator.style.display  = 'block';
+      indicator.style.left     = e.clientX + 'px';
+      document.body.style.cursor     = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      let liveW = startW;
+
+      const onMove = ev => {
+        const newW  = Math.max(60, startW + (ev.clientX - startX));
+        const diffW = newW - liveW;
+        if (!diffW) return;
+        liveW = newW;
+        th.style.width = newW + 'px';
+        const tbl = document.getElementById(tableId);
+        tbl.style.width = (parseInt(tbl.style.width || tbl.offsetWidth) + diffW) + 'px';
+        indicator.style.left = ev.clientX + 'px';
+      };
+
+      const onUp = () => {
+        handle.classList.remove('is-resizing');
+        indicator.style.display    = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // persist widths
+        const c = C();
+        document.querySelectorAll(`#${tableId} thead th[data-ci]`).forEach(t => {
+          c[tkey].colWidths[parseInt(t.dataset.ci)] = Math.round(t.getBoundingClientRect().width);
+        });
+        save();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
+  });
+}
+
+/* ─ Column Drag-to-Reorder ─ */
+function attachStdColDrag(tkey, tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const ths = Array.from(table.querySelectorAll('thead th[data-ci]'));
+  let dragSrcCi = null;
+
+  ths.forEach(th => {
+    th.addEventListener('dragstart', e => {
+      // ignore drags that start on the resize handle
+      if (e.target.classList.contains('col-resize-handle')) { e.preventDefault(); return; }
+      dragSrcCi = parseInt(th.dataset.ci);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(dragSrcCi));
+      setTimeout(() => th.classList.add('col-dragging'), 0);
+    });
+
+    th.addEventListener('dragend', () => {
+      th.classList.remove('col-dragging');
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      dragSrcCi = null;
+    });
+
+    th.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (parseInt(th.dataset.ci) === dragSrcCi) return;
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      th.classList.add('col-drag-over');
+    });
+
+    th.addEventListener('dragleave', () => th.classList.remove('col-drag-over'));
+
+    th.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      if (dragSrcCi === null) return;
+      const tgtCi = parseInt(th.dataset.ci);
+      if (tgtCi === dragSrcCi) return;
+
+      const tbl = C()[tkey];
+      const [mc] = tbl.cols.splice(dragSrcCi, 1);
+      tbl.cols.splice(tgtCi, 0, mc);
+      const [mw] = tbl.colWidths.splice(dragSrcCi, 1);
+      tbl.colWidths.splice(tgtCi, 0, mw);
+
+      save(); renderDoc();
+      toast('Column reordered.');
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+//  OA TABLE BUILDER
+// ─────────────────────────────────────────────
+function buildOaTable(c) {
+  const oa = c.oa;
+  while (oa.colWidths.length < oa.cols.length) oa.colWidths.push(160);
+  oa.colWidths.length = oa.cols.length;
+
+  // 32 = row-drag col, 36 = delete col
+  const totalW = oa.colWidths.reduce((a, b) => a + b, 0) + 32 + 36;
+
+  // Column headers — draggable for col reorder + resize handle on right edge
+  const ths = oa.cols.map((col, i) => `
+    <th style="width:${oa.colWidths[i]}px;" data-ci="${i}" draggable="true">
+      <span class="col-th-grip" title="Drag to reorder this column">&#x2630;</span>${x(col)}<div class="col-resize-handle" data-ci="${i}"></div>
+    </th>`).join('');
+
+  const trs = oa.rows.map((row, ri) => `
+    <tr>
+      ${oa.cols.map((col, ci) => `
+        <td class="${ci===0?'td-bold':''} ${col==='Coverage'?'td-center':''}">
+          <span class="editable" contenteditable="true"
+            data-f="oa.rows.${ri}.${ek(col)}" data-ph="&mdash;">${x(row[col]||'')}</span>
+        </td>`).join('')}
+      <td class="td-actions"><button class="row-del" onclick="delOaRow(${ri})">&#x1F5D1;</button></td>
+    </tr>`).join('');
+
+  // totalW without the 32px drag column
+  const tableW = oa.colWidths.reduce((a, b) => a + b, 0) + 36;
+
+  return `
+  <div class="resizable-table-wrap teal">
+    <table class="resizable-table teal-rows" id="oaTable" style="width:${tableW}px;">
+      <thead><tr style="background:#1a5a4a;">
+        ${ths}
+        <th class="th-actions" style="width:36px;"></th>
+      </tr></thead>
+      <tbody id="oaTbody">${trs}</tbody>
+    </table>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────
+//  OA INTERACTIONS  (col resize + col drag-reorder + row drag-drop)
+// ─────────────────────────────────────────────
+function attachOaInteractions() {
+  attachOaColResize();
+  attachOaColDrag();
+}
+
+/* ─ OA Column Resize ─ */
+function attachOaColResize() {
+  const table     = document.getElementById('oaTable');
+  const indicator = document.getElementById('resizeIndicator');
+  if (!table) return;
+
+  table.querySelectorAll('thead .col-resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const th     = handle.closest('th');
+      const startX = e.clientX;
+      const startW = th.getBoundingClientRect().width;
+
+      handle.classList.add('is-resizing');
+      indicator.style.display      = 'block';
+      indicator.style.left         = e.clientX + 'px';
+      document.body.style.cursor   = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      let liveW = startW;
+
+      const onMove = ev => {
+        const newW  = Math.max(60, startW + (ev.clientX - startX));
+        const diffW = newW - liveW;
+        if (!diffW) return;
+        liveW = newW;
+        th.style.width = newW + 'px';
+        const tbl = document.getElementById('oaTable');
+        tbl.style.width = (parseInt(tbl.style.width || tbl.offsetWidth) + diffW) + 'px';
+        indicator.style.left = ev.clientX + 'px';
+      };
+
+      const onUp = () => {
+        handle.classList.remove('is-resizing');
+        indicator.style.display      = '';
+        document.body.style.cursor   = '';
+        document.body.style.userSelect = '';
+        const c = C();
+        document.querySelectorAll('#oaTable thead th[data-ci]').forEach(t => {
+          c.oa.colWidths[parseInt(t.dataset.ci)] = Math.round(t.getBoundingClientRect().width);
+        });
+        save();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
+  });
+}
+
+/* ─ OA Column Drag-to-Reorder ─ */
+function attachOaColDrag() {
+  const table = document.getElementById('oaTable');
+  if (!table) return;
+  const ths = Array.from(table.querySelectorAll('thead th[data-ci]'));
+  let dragSrcCi = null;
+
+  ths.forEach(th => {
+    th.addEventListener('dragstart', e => {
+      if (e.target.classList.contains('col-resize-handle')) { e.preventDefault(); return; }
+      dragSrcCi = parseInt(th.dataset.ci);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(dragSrcCi));
+      setTimeout(() => th.classList.add('col-dragging'), 0);
+    });
+    th.addEventListener('dragend', () => {
+      th.classList.remove('col-dragging');
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      dragSrcCi = null;
+    });
+    th.addEventListener('dragover', e => {
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      if (parseInt(th.dataset.ci) === dragSrcCi) return;
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      th.classList.add('col-drag-over');
+    });
+    th.addEventListener('dragleave', () => th.classList.remove('col-drag-over'));
+    th.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      ths.forEach(t => t.classList.remove('col-drag-over'));
+      if (dragSrcCi === null) return;
+      const tgtCi = parseInt(th.dataset.ci);
+      if (tgtCi === dragSrcCi) return;
+      const oa = C().oa;
+      const [mc] = oa.cols.splice(dragSrcCi, 1);
+      oa.cols.splice(tgtCi, 0, mc);
+      const [mw] = oa.colWidths.splice(dragSrcCi, 1);
+      oa.colWidths.splice(tgtCi, 0, mw);
+      save(); renderDoc();
+      toast('Column reordered.');
+    });
+  });
+}
+
+
+// ─────────────────────────────────────────────
+//  BULLET HELPERS
+// ─────────────────────────────────────────────
+function bRow(text, i, key, color) {
+  const cls = color === 'green' ? 'bd-green' : 'bd-orange';
+  return `<li class="bullet-row">
+    <span class="${cls}">&bull;</span>
+    <span class="editable" contenteditable="true"
+      data-f="${key}.${i}" data-ph="Enter text&hellip;">${x(text)}</span>
+    <button class="bullet-x" onclick="removeBullet('${key}',${i})">&#x2715;</button>
+  </li>`;
+}
+function cTag(col, i, tkey) {
+  return `<span class="col-tag">${x(col)}<button class="col-tag-x" onclick="removeCol('${tkey}',${i})">&#x2715;</button></span>`;
+}
+function cTagTeal(col, i) {
+  return `<span class="col-tag">${x(col)}<button class="col-tag-x" onclick="removeOaCol(${i})">&#x2715;</button></span>`;
+}
+
+// ─────────────────────────────────────────────
+//  EDITABLE SPANS
+// ─────────────────────────────────────────────
+function attachEditable() {
+  document.querySelectorAll('.editable[contenteditable="true"]').forEach(el => {
+    el.addEventListener('blur', function() {
+      setF(C(), this.dataset.f, this.innerText.trim());
+      save();
+    });
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.blur(); }
+    });
+  });
+}
+
+function ek(s) { return s.replace(/\./g, '_D_'); }
+function dk(s) { return s.replace(/_D_/g, '.'); }
+
+function setF(obj, path, val) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const k = dk(parts[i]);
+    if (cur[k] === undefined) cur[k] = {};
+    cur = cur[k];
+  }
+  const last = dk(parts[parts.length - 1]);
+  if (Array.isArray(cur) && !isNaN(last)) cur[+last] = val;
+  else cur[last] = val;
+}
+
+function onDocTitleInput(v) {
+  C().name = v || 'Contract';
+  document.getElementById('topTitleInput').value = v;
+  save(); renderSidebar();
+}
+function onTopTitleInput(v) {
+  C().name = v || 'Contract';
+  save(); renderSidebar();
+  const di = document.querySelector('.doc-title-input');
+  if (di) di.value = v;
+}
+
+// ─────────────────────────────────────────────
+//  BULLETS
+// ─────────────────────────────────────────────
+function addBullet(key) {
+  if (key === 'crit') C().critical.push('New item');
+  else C().reminders.push('New reminder');
+  save(); renderDoc();
+}
+function removeBullet(key, i) {
+  if (key === 'crit') C().critical.splice(i, 1);
+  else C().reminders.splice(i, 1);
+  save(); renderDoc();
+}
+
+// ─────────────────────────────────────────────
+//  COLUMNS — med / nc
+// ─────────────────────────────────────────────
+function addCol(tkey, inputId) {
+  const inp  = document.getElementById(inputId);
+  const name = inp.value.trim();
+  if (!name) return;
+  const tbl  = C()[tkey];
+  if (tbl.cols.includes(name)) { toast('Column already exists.', true); return; }
+  tbl.cols.push(name);
+  tbl.colWidths = tbl.colWidths || [];
+  tbl.colWidths.push(160);
+  tbl.rows.forEach(r => r[name] = '');
+  inp.value = '';
+  save(); renderDoc();
+}
+function removeCol(tkey, ci) {
+  const tbl  = C()[tkey];
+  if (tbl.cols.length <= 1) { toast('Cannot remove last column.', true); return; }
+  const name = tbl.cols[ci];
+  tbl.cols.splice(ci, 1);
+  if (tbl.colWidths) tbl.colWidths.splice(ci, 1);
+  tbl.rows.forEach(r => delete r[name]);
+  save(); renderDoc();
+}
+
+// ─────────────────────────────────────────────
+//  COLUMNS — oa
+// ─────────────────────────────────────────────
+function addOaCol() {
+  const inp  = document.getElementById('oa_ci');
+  const name = inp.value.trim();
+  if (!name) return;
+  const oa = C().oa;
+  if (oa.cols.includes(name)) { toast('Column already exists.', true); return; }
+  oa.cols.push(name); oa.colWidths.push(160);
+  oa.rows.forEach(r => r[name] = '');
+  inp.value = '';
+  save(); renderDoc();
+}
+function removeOaCol(ci) {
+  const oa = C().oa;
+  if (oa.cols.length <= 1) { toast('Cannot remove last column.', true); return; }
+  const name = oa.cols[ci];
+  oa.cols.splice(ci, 1); oa.colWidths.splice(ci, 1);
+  oa.rows.forEach(r => delete r[name]);
+  save(); renderDoc();
+}
+
+// ─────────────────────────────────────────────
+//  ROWS — med / nc
+// ─────────────────────────────────────────────
+function delRow(tkey, ri) { C()[tkey].rows.splice(ri, 1); save(); renderDoc(); }
+
+function openStdRowModal(tkey) {
+  const tbl    = C()[tkey];
+  const bodyId = tkey === 'med' ? 'medRowModalBody' : 'ncRowModalBody';
+  const lCls   = tkey === 'nc'  ? ' class="red"'    : '';
+  document.getElementById(bodyId).innerHTML = tbl.cols.map(col => `
+    <label${lCls}>${x(col)}</label>
+    <textarea id="rm_${tkey}_${ek(col)}" placeholder="${x(col)}&hellip;" rows="2"></textarea>
+  `).join('');
+  openModal(tkey === 'med' ? 'medRowModal' : 'ncRowModal');
+  setTimeout(() => { const f = document.querySelector(`#${bodyId} textarea`); if (f) f.focus(); }, 80);
+}
+
+function doAddStdRow(tkey) {
+  const tbl = C()[tkey];
+  const row = {};
+  tbl.cols.forEach(col => {
+    const el = document.getElementById(`rm_${tkey}_${ek(col)}`);
+    row[col] = el ? el.value.trim() : '';
+  });
+  tbl.rows.push(row);
+  closeModal(tkey === 'med' ? 'medRowModal' : 'ncRowModal');
+  save(); renderDoc(); toast('Row added.');
+}
+
+// ─────────────────────────────────────────────
+//  ROWS — oa
+// ─────────────────────────────────────────────
+function delOaRow(ri) { C().oa.rows.splice(ri, 1); save(); renderDoc(); }
+
+function openOaRowModal() {
+  const oa = C().oa;
+  document.getElementById('oaRowModalBody').innerHTML = oa.cols.map(col => `
+    <label class="teal">${x(col)}</label>
+    <textarea id="oarm_${ek(col)}" placeholder="${x(col)}&hellip;" rows="2"></textarea>
+  `).join('');
+  openModal('oaRowModal');
+  setTimeout(() => { const f = document.querySelector('#oaRowModalBody textarea'); if (f) f.focus(); }, 80);
+}
+function doAddOaRow() {
+  const oa = C().oa; const row = {};
+  oa.cols.forEach(col => { const el = document.getElementById('oarm_' + ek(col)); row[col] = el ? el.value.trim() : ''; });
+  oa.rows.push(row);
+  closeModal('oaRowModal'); save(); renderDoc();
+  toast('Orthopedic appliance row added.');
+}
+
+// ─────────────────────────────────────────────
+//  EXPORT  (.doc / Word HTML)
+// ─────────────────────────────────────────────
+function exportDoc() {
+  const c = C();
+  const blob = new Blob(['\ufeff' + makeWordHtml(c)], { type: 'application/vnd.ms-word;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = (c.name||'pharmacy-claims').replace(/[<>:"/\\|?*]/g,'_')+'.doc';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Word document downloaded — open in Microsoft Word or LibreOffice.');
+}
+
+function makeWordHtml(c) {
+  function buildTable(tbl, headBg, evenBg) {
+    const ths = tbl.cols.map(col =>
+      `<th style="background:${headBg};color:#fff;padding:7px 11px;font-size:11pt;text-align:left;border:1px solid ${headBg};">${x(col)}</th>`
+    ).join('');
+    const trs = tbl.rows.map((row, ri) => {
+      const bg = ri%2===0?'#ffffff':evenBg;
+      return `<tr style="background:${bg}">${tbl.cols.map((col,ci)=>
+        `<td style="padding:6px 11px;border:1px solid #dde;font-size:11pt;vertical-align:top;${ci===0?'font-weight:bold;':''}">${x(row[col]||'')}</td>`
+      ).join('')}</tr>`;
+    }).join('');
+    return `<table style="width:100%;border-collapse:collapse;margin-bottom:14pt;"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  }
+  const critItems = c.critical.map(t=>`<li style="margin-bottom:4pt;font-size:11pt;color:#333;">${x(t)}</li>`).join('');
+  const remItems  = c.reminders.map(t=>`<li style="margin-bottom:4pt;font-size:11pt;color:#333;">${x(t)}</li>`).join('');
+
+  return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>${x(c.name)}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>
+  @page{margin:2cm} body{font-family:Arial,sans-serif;font-size:11pt;color:#222}
+  h1{color:#1a3a7a;text-align:center;font-size:15pt;margin-bottom:4pt}
+  h2{color:#1a3a7a;font-size:13pt;margin:16pt 0 8pt} h2.teal{color:#1a5a4a}
+  hr{border:none;border-bottom:2px solid #1a3a7a;margin:6pt 0 14pt}
+  .crit-box{border:1.5pt solid #e07020;background:#fff8f0;padding:10pt 14pt;margin-bottom:14pt}
+  .crit-title{color:#c05010;font-weight:bold;font-size:12pt;margin-bottom:7pt}
+  .rem-box{border:1.5pt solid #5aaa80;background:#f0faf5;padding:10pt 14pt;margin-top:14pt}
+  .rem-title{color:#2d7a50;font-weight:bold;font-size:12pt;margin-bottom:7pt}
+  .tct{width:100%;border-collapse:collapse;margin-bottom:14pt}
+  .tct td{width:50%;vertical-align:top;padding:0 12pt 0 0;font-size:11pt}
+  .tct td:last-child{padding:0 0 0 12pt;border-left:1pt solid #ddd}
+  .ch{font-size:10pt;font-weight:bold;text-transform:uppercase;color:#1a3a7a;border-bottom:1.5pt solid #1a3a7a;padding-bottom:4pt;margin-bottom:8pt}
+  .fl{font-weight:bold;font-size:11pt;margin:8pt 0 2pt}
+  .fv{font-size:11pt;color:#333;margin-bottom:3pt}
+  .fv-red{font-size:11pt;color:#c00;margin-bottom:3pt}
+  .fv-it{font-size:11pt;color:#555;font-style:italic;margin-bottom:3pt}
+  ul{margin:0;padding-left:18pt}
+</style></head><body>
+<h1>${x(c.name)}</h1><hr>
+<div class="crit-box"><div class="crit-title">&#x26A0; CRITICAL INFORMATION &#x26A0;</div><ul>${critItems}</ul></div>
+<table class="tct"><tr>
+  <td>
+    <div class="ch">R&amp;C &ndash; APPLICABLE</div>
+    <div class="fl">Claim Submission Deadline</div><div class="fv">All claims must be received within ${x(c.rc.deadline)}</div>
+    <div class="fl">Prescription Validity</div><div class="fv">${x(c.rc.validity)}</div>
+  </td>
+  <td>
+    <div class="ch">PAYMENT METHODS</div>
+    <div class="fl">Active Staff</div><div class="fv">${x(c.pay.active)}</div>
+    <div class="fl">Retired Staff</div><div class="fv">${x(c.pay.retired)}</div>
+    <div class="fv-red">${x(c.pay.regional)}</div><div class="fv-it">${x(c.pay.large)}</div>
+  </td>
+</tr></table>
+<h2>MEDICINES COVERAGE (80%)</h2>${buildTable(c.med,'#1a3a7a','#eef2fb')}
+<h2>NOT COVERED ITEMS</h2>${buildTable(c.nc,'#7a1a1a','#fdf4f4')}
+<h2 class="teal">ORTHOPEDIC APPLIANCE COVERAGE</h2>${buildTable(c.oa,'#1a5a4a','#f0faf8')}
+<div class="rem-box"><div class="rem-title">&#x2705; IMPORTANT REMINDERS &#x2705;</div><ul>${remItems}</ul></div>
+${c.sme  ? `<div style="border:1.5pt solid #b8c8ee;background:#f7f9ff;padding:10pt 14pt;margin-top:14pt;"><div style="font-size:11pt;font-weight:bold;color:#1a3a7a;text-transform:uppercase;border-bottom:1pt solid #d0daee;padding-bottom:4pt;margin-bottom:6pt;">SME</div><div style="font-size:11pt;color:#333;">${x(c.sme)}</div></div>` : ''}
+${c.ver2 ? `<div style="border:1.5pt solid #b8c8ee;background:#f7f9ff;padding:10pt 14pt;margin-top:14pt;"><div style="font-size:11pt;font-weight:bold;color:#1a3a7a;text-transform:uppercase;border-bottom:1pt solid #d0daee;padding-bottom:4pt;margin-bottom:6pt;">VERSION 2</div><div style="font-size:11pt;color:#333;">${x(c.ver2)}</div></div>` : ''}
+</body></html>`;
+}
+
+// ─────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────
+function x(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+let toastTm;
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toastTm);
+  toastTm = setTimeout(() => t.className = 'toast', 3500);
+}
+
+['newModal','medRowModal','ncRowModal','oaRowModal'].forEach(id =>
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) closeModal(id);
+  })
+);
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); save(); toast('Saved.'); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='e') { e.preventDefault(); exportDoc(); }
+});
+
+init();
+</script>
+</body>
+</html>
